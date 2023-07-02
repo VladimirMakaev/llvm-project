@@ -59,6 +59,9 @@ filecheck = None
 # Path to the yaml2obj tool. Not optional.
 yaml2obj = None
 
+# Path to llc tool
+llc = None
+
 # The arch might dictate some specific CFLAGS to be passed to the toolchain to build
 # the inferior programs.  The global variable cflags_extras provides a hook to do
 # just that.

@@ -293,7 +293,7 @@ ifeq (,$(filter $(OS), Windows_NT Android Darwin))
 		LDFLAGS += -pthread
 	endif
 endif
-OBJECTS =
+OBJECTS ?=
 EXE ?= a.out
 
 ifneq "$(FRAMEWORK)" ""

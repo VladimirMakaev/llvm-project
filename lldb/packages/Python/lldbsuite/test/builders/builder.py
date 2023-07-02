@@ -101,6 +101,9 @@ class Builder:
             return ["CC=\"%s\"" % cc]
         return []
 
+    def getLLCSpec(self):
+        return ["LLC=\"%s\"" % configuration.llc] if configuration.llc else []
+
     def getSDKRootSpec(self):
         """
         Helper function to return the key-value string to specify the SDK root
@@ -151,7 +154,7 @@ class Builder:
         command_parts = [
             self.getMake(testdir, testname), debug_info_args, make_targets,
             self.getArchCFlags(architecture), self.getArchSpec(architecture),
-            self.getCCSpec(compiler), self.getExtraMakeArgs(),
+            self.getCCSpec(compiler), self.getExtraMakeArgs(), self.getLLCSpec(),
             self.getSDKRootSpec(), self.getModuleCacheSpec(),
             self.getLibCxxArgs(), self.getCmdLine(dictionary)]
         command = list(itertools.chain(*command_parts))
