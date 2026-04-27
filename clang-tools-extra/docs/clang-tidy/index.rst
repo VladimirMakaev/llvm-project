@@ -185,6 +185,18 @@ An overview of all the command-line options:
                                        Can be used together with -line-filter.
                                        This option overrides the 'ExcludeHeaderFilterRegex'
                                        option in .clang-tidy file, if any.
+    --experimental-header-filter-scope
+                                     - When enabled, clang-tidy skips AST matching
+                                       for declarations in headers that do not match
+                                       -header-filter or that match
+                                       -exclude-header-filter.
+                                       This can improve performance for narrow
+                                       header-filter runs, but may change results
+                                       for checks that rely on declarations outside
+                                       the filtered headers.
+                                       This option overrides the
+                                       'ExperimentalHeaderFilterScope' option in
+                                       .clang-tidy file, if any.
     --experimental-custom-checks     - Enable experimental clang-query based
                                        custom checks.
                                        see https://clang.llvm.org/extra/clang-tidy/QueryBasedCustomChecks.html.
@@ -320,6 +332,9 @@ An overview of all the command-line options:
     CustomChecks                 - Array of user defined checks based on
                                    Clang-Query syntax.
     ExcludeHeaderFilterRegex     - Same as '--exclude-header-filter'.
+    ExperimentalHeaderFilterScope
+                                 - Same as
+                                   '--experimental-header-filter-scope'.
     ExtraArgs                    - Same as '--extra-arg'.
     ExtraArgsBefore              - Same as '--extra-arg-before'.
     FormatStyle                  - Same as '--format-style'.
@@ -352,6 +367,7 @@ An overview of all the command-line options:
       HeaderFileExtensions:         ['', 'h','hh','hpp','hxx']
       ImplementationFileExtensions: ['c','cc','cpp','cxx']
       HeaderFilterRegex:            '.*'
+      ExperimentalHeaderFilterScope: false
       FormatStyle:                  none
       InheritParentConfig:          true
       User:                         user

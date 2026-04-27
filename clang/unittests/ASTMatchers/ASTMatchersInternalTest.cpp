@@ -345,6 +345,55 @@ TEST(IsInlineMatcher, IsInline) {
 // Windows.
 #ifndef _WIN32
 
+TEST(MatchFinder, HonorsShouldTraverseDecl) {
+  FileContentMappings M;
+  M.emplace_back("/other.h", "class HeaderDecl {};");
+  auto AST = tooling::buildASTFromCodeWithArgs(
+      "#include \"other.h\"\n"
+      "class MainDecl {};\n",
+      {"-std=gnu++11", "-target", "i386-unknown-unknown", "-I/"},
+      "input.cc", "clang-tool", std::make_shared<PCHContainerOperations>(),
+      tooling::getClangStripDependencyFileAdjuster(), M);
+  ASSERT_TRUE(AST);
+
+  auto matchRecordDecls = [&](MatchFinder::MatchFinderOptions Options) {
+    struct RecordCallback : MatchFinder::MatchCallback {
+      explicit RecordCallback(std::vector<std::string> &Names) : Names(Names) {}
+
+      void run(const MatchFinder::MatchResult &Result) override {
+        const auto *Record = Result.Nodes.getNodeAs<CXXRecordDecl>("record");
+        ASSERT_NE(nullptr, Record);
+        Names.push_back(std::string(Record->getName()));
+      }
+
+      std::vector<std::string> &Names;
+    };
+
+    std::vector<std::string> Names;
+    RecordCallback Callback(Names);
+    MatchFinder Finder(std::move(Options));
+    Finder.addMatcher(cxxRecordDecl(isDefinition(), unless(isImplicit()))
+                          .bind("record"),
+                      &Callback);
+    Finder.matchAST(AST->getASTContext());
+    return Names;
+  };
+
+  const auto AllMatches = matchRecordDecls({});
+  ASSERT_EQ(2u, AllMatches.size());
+  EXPECT_EQ("HeaderDecl", AllMatches[0]);
+  EXPECT_EQ("MainDecl", AllMatches[1]);
+
+  MatchFinder::MatchFinderOptions ScopedOptions;
+  SourceManager &SM = AST->getSourceManager();
+  ScopedOptions.ShouldTraverseDecl = [&SM](SourceLocation Loc) {
+    return SM.isInMainFile(Loc);
+  };
+  const auto ScopedMatches = matchRecordDecls(std::move(ScopedOptions));
+  ASSERT_EQ(1u, ScopedMatches.size());
+  EXPECT_EQ("MainDecl", ScopedMatches[0]);
+}
+
 TEST(Matcher, IsExpansionInMainFileMatcher) {
   EXPECT_TRUE(matches("class X {};",
                       recordDecl(hasName("X"), isExpansionInMainFile())));

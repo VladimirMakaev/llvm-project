@@ -44,6 +44,7 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/Timer.h"
+#include <functional>
 #include <optional>
 
 namespace clang {
@@ -144,6 +145,12 @@ public:
 
     /// Avoids matching declarations in system headers.
     bool IgnoreSystemHeaders{false};
+
+    /// Restricts matching and traversal for declarations based on location.
+    ///
+    /// When set and the callback returns false, the declaration subtree is
+    /// skipped entirely.
+    std::function<bool(SourceLocation)> ShouldTraverseDecl;
 
     bool SkipDeclsInModules{false};
   };

@@ -1366,10 +1366,18 @@ private:
     return SM.isInSystemHeader(Loc);
   }
 
-  template <typename T> bool shouldSkipNode(T &Node) {
-    if (Options.IgnoreSystemHeaders && isInSystemHeader(getNodeLocation(Node)))
+  bool shouldSkipNode(Decl &Node) {
+    if (shouldSkipSystemHeaders(Node))
+      return true;
+
+    if (Options.ShouldTraverseDecl &&
+        !Options.ShouldTraverseDecl(getNodeLocation(Node)))
       return true;
     return false;
+  }
+
+  template <typename T> bool shouldSkipNode(T &Node) {
+    return shouldSkipSystemHeaders(Node);
   }
 
   template <typename T> bool shouldSkipNode(T *Node) {
@@ -1379,6 +1387,12 @@ private:
   bool shouldSkipNode(QualType &) { return false; }
 
   bool shouldSkipNode(NestedNameSpecifier &) { return false; }
+
+  template <typename T> bool shouldSkipSystemHeaders(T &Node) {
+    if (Options.IgnoreSystemHeaders && isInSystemHeader(getNodeLocation(Node)))
+      return true;
+    return false;
+  }
 
   /// Bucket to record map.
   ///

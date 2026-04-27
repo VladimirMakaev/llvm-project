@@ -36,7 +36,6 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/FormatVariadic.h"
-#include "llvm/Support/Regex.h"
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -583,39 +582,32 @@ void ClangTidyDiagnosticConsumer::checkFilters(SourceLocation Location,
   // location needed depends on the check (in particular, where this check wants
   // to apply fixes).
   const FileID FID = Sources.getDecomposedExpansionLoc(Location).first;
+  LastErrorRelatesToUserCode = LastErrorRelatesToUserCode ||
+                               getHeaderFilterMatcher().shouldProcessLocation(
+                                   Location, Sources);
+
   OptionalFileEntryRef File = Sources.getFileEntryRefForID(FID);
 
   // -DMACRO definitions on the command line have locations in a virtual buffer
   // that doesn't have a FileEntry. Don't skip these as well.
   if (!File) {
-    LastErrorRelatesToUserCode = true;
     LastErrorPassesLineFilter = true;
     return;
   }
 
   const StringRef FileName(File->getName());
-  LastErrorRelatesToUserCode = LastErrorRelatesToUserCode ||
-                               Sources.isInMainFile(Location) ||
-                               (getHeaderFilter()->match(FileName) &&
-                                !getExcludeHeaderFilter()->match(FileName));
 
   const unsigned LineNumber = Sources.getExpansionLineNumber(Location);
   LastErrorPassesLineFilter =
       LastErrorPassesLineFilter || passesLineFilter(FileName, LineNumber);
 }
 
-llvm::Regex *ClangTidyDiagnosticConsumer::getHeaderFilter() {
-  if (!HeaderFilter)
-    HeaderFilter = std::make_unique<llvm::Regex>(
-        Context.getOptions().HeaderFilterRegex.value_or(""));
-  return HeaderFilter.get();
-}
-
-llvm::Regex *ClangTidyDiagnosticConsumer::getExcludeHeaderFilter() {
-  if (!ExcludeHeaderFilter)
-    ExcludeHeaderFilter = std::make_unique<llvm::Regex>(
+HeaderFilterMatcher &ClangTidyDiagnosticConsumer::getHeaderFilterMatcher() {
+  if (!HeaderFilterMatchHelper)
+    HeaderFilterMatchHelper = std::make_unique<HeaderFilterMatcher>(
+        Context.getOptions().HeaderFilterRegex.value_or(""),
         Context.getOptions().ExcludeHeaderFilterRegex.value_or(""));
-  return ExcludeHeaderFilter.get();
+  return *HeaderFilterMatchHelper;
 }
 
 void ClangTidyDiagnosticConsumer::removeIncompatibleErrors() {

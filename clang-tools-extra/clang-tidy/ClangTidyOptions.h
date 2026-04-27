@@ -92,6 +92,11 @@ struct ClangTidyOptions {
   /// Output warnings from system headers matching \c HeaderFilterRegex.
   std::optional<bool> SystemHeaders;
 
+  /// When set, skip AST matching for declarations in headers that do not
+  /// match \c HeaderFilterRegex or that match
+  /// \c ExcludeHeaderFilterRegex.
+  std::optional<bool> ExperimentalHeaderFilterScope;
+
   /// Format code around applied fixes with clang-format using this
   /// style.
   ///

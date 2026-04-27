@@ -111,6 +111,12 @@ Improvements to clang-tidy
 - Improved :program:`clang-tidy` ``-store-check-profile`` by generating valid
   JSON when the source file path contains characters that require JSON escaping.
 
+- Added an experimental :program:`clang-tidy`
+  ``-experimental-header-filter-scope`` option that skips AST matching for
+  declarations in headers that do not match ``-header-filter`` (or match
+  ``-exclude-header-filter``), improving performance for narrow header-filter
+  runs.
+
 New checks
 ^^^^^^^^^^
 
