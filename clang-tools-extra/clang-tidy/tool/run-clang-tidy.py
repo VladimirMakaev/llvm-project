@@ -94,6 +94,7 @@ def get_tidy_invocation(
     tmpdir: Optional[str],
     build_path: str,
     header_filter: Optional[str],
+    experimental_header_filter_scope: Optional[bool],
     allow_enabling_alpha_checkers: bool,
     extra_arg: List[str],
     extra_arg_before: List[str],
@@ -117,6 +118,11 @@ def get_tidy_invocation(
         start.append(f"--exclude-header-filter={exclude_header_filter}")
     if header_filter is not None:
         start.append(f"-header-filter={header_filter}")
+    if experimental_header_filter_scope is not None:
+        if experimental_header_filter_scope:
+            start.append("--experimental-header-filter-scope")
+        else:
+            start.append("--experimental-header-filter-scope=false")
     if line_filter is not None:
         start.append(f"-line-filter={line_filter}")
     if use_color is not None:
@@ -378,6 +384,7 @@ async def run_tidy(
         tmpdir,
         build_path,
         args.header_filter,
+        args.experimental_header_filter_scope,
         args.allow_enabling_alpha_checkers,
         args.extra_arg,
         args.extra_arg_before,
@@ -477,6 +484,16 @@ async def main() -> None:
         "headers to output diagnostics from. Diagnostics from "
         "the main file of each translation unit are always "
         "displayed.",
+    )
+    parser.add_argument(
+        "-experimental-header-filter-scope",
+        type=strtobool,
+        nargs="?",
+        const=True,
+        default=None,
+        help="Enable experimental AST scoping to headers that "
+        "match -header-filter and do not match "
+        "-exclude-header-filter.",
     )
     parser.add_argument(
         "-source-filter",
@@ -647,6 +664,7 @@ async def main() -> None:
             None,
             build_path,
             args.header_filter,
+            args.experimental_header_filter_scope,
             args.allow_enabling_alpha_checkers,
             args.extra_arg,
             args.extra_arg_before,
