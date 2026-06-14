@@ -331,16 +331,19 @@ public:
   ClangTidyASTConsumer(std::vector<std::unique_ptr<ASTConsumer>> Consumers,
                        std::unique_ptr<ClangTidyProfiling> Profiling,
                        std::unique_ptr<ast_matchers::MatchFinder> Finder,
+                       std::unique_ptr<ast_matchers::MatchFinder> ScopedFinder,
                        std::vector<std::unique_ptr<ClangTidyCheck>> Checks)
       : MultiplexConsumer(std::move(Consumers)),
         Profiling(std::move(Profiling)), Finder(std::move(Finder)),
+        ScopedFinder(std::move(ScopedFinder)),
         Checks(std::move(Checks)) {}
 
 private:
   // Destructor order matters! Profiling must be destructed last.
-  // Or at least after Finder.
+  // Or at least after the match finders.
   std::unique_ptr<ClangTidyProfiling> Profiling;
   std::unique_ptr<ast_matchers::MatchFinder> Finder;
+  std::unique_ptr<ast_matchers::MatchFinder> ScopedFinder;
   std::vector<std::unique_ptr<ClangTidyCheck>> Checks;
   void anchor() override {}
 };
@@ -449,14 +452,23 @@ ClangTidyASTConsumerFactory::createASTConsumer(CompilerInstance &Compiler,
   if (!Context.getOptions().SystemHeaders.value_or(false))
     FinderOptions.IgnoreSystemHeaders = true;
 
-  if (Context.getOptions().ExperimentalHeaderFilterMatching.value_or(false)) {
+  std::unique_ptr<ast_matchers::MatchFinder> ScopedFinder;
+  const auto &HeaderFilterRegex = Context.getOptions().HeaderFilterRegex;
+  const bool HasNarrowHeaderFilter =
+      HeaderFilterRegex && !HeaderFilterRegex->empty() &&
+      *HeaderFilterRegex != ".*";
+  if (HasNarrowHeaderFilter) {
+    ast_matchers::MatchFinder::MatchFinderOptions ScopedOptions =
+        FinderOptions;
     auto LocationFilter = std::make_shared<HeaderFilterLocationFilter>(
         Context.getOptions().HeaderFilterRegex.value_or(""),
         Context.getOptions().ExcludeHeaderFilterRegex.value_or(""));
-    FinderOptions.ShouldSkipLocation = [LocationFilter,
+    ScopedOptions.ShouldSkipLocation = [LocationFilter,
                                         SM](SourceLocation Location) {
       return !LocationFilter->shouldInclude(Location, *SM);
     };
+    ScopedFinder =
+        std::make_unique<ast_matchers::MatchFinder>(std::move(ScopedOptions));
   }
 
   auto Finder =
@@ -473,14 +485,25 @@ ClangTidyASTConsumerFactory::createASTConsumer(CompilerInstance &Compiler,
     PP->addPPCallbacks(std::move(ModuleExpander));
   }
 
+  bool NeedsDefaultFinder = false;
+  bool NeedsScopedFinder = false;
   for (auto &Check : Checks) {
-    Check->registerMatchers(&*Finder);
+    ast_matchers::MatchFinder *CheckFinder = &*Finder;
+    if (ScopedFinder && Check->isSafeForHeaderFilterScoping()) {
+      CheckFinder = &*ScopedFinder;
+      NeedsScopedFinder = true;
+    } else {
+      NeedsDefaultFinder = true;
+    }
+    Check->registerMatchers(CheckFinder);
     Check->registerPPCallbacks(*SM, PP, ModuleExpanderPP);
   }
 
   std::vector<std::unique_ptr<ASTConsumer>> Consumers;
-  if (!Checks.empty())
+  if (NeedsDefaultFinder)
     Consumers.push_back(Finder->newASTConsumer());
+  if (NeedsScopedFinder)
+    Consumers.push_back(ScopedFinder->newASTConsumer());
 
 #if CLANG_TIDY_ENABLE_STATIC_ANALYZER
   AnalyzerOptions &AnalyzerOptions = Compiler.getAnalyzerOpts();
@@ -498,7 +521,7 @@ ClangTidyASTConsumerFactory::createASTConsumer(CompilerInstance &Compiler,
 #endif // CLANG_TIDY_ENABLE_STATIC_ANALYZER
   return std::make_unique<ClangTidyASTConsumer>(
       std::move(Consumers), std::move(Profiling), std::move(Finder),
-      std::move(Checks));
+      std::move(ScopedFinder), std::move(Checks));
 }
 
 std::vector<std::string> ClangTidyASTConsumerFactory::getCheckNames() {

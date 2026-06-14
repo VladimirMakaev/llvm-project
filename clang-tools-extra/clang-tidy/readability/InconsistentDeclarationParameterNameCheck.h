@@ -29,6 +29,7 @@ public:
         Strict(Options.get("Strict", false)) {}
 
   void storeOptions(ClangTidyOptions::OptionMap &Opts) override;
+  bool isSafeForHeaderFilterScoping() const override { return false; }
   void registerMatchers(ast_matchers::MatchFinder *Finder) override;
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
   std::optional<TraversalKind> getCheckTraversalKind() const override {

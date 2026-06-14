@@ -38,6 +38,7 @@ public:
   void registerPPCallbacks(const SourceManager &SM, Preprocessor *PP,
                            Preprocessor *ModuleExpanderPP) override;
   void storeOptions(ClangTidyOptions::OptionMap &Opts) override;
+  bool isSafeForHeaderFilterScoping() const override { return false; }
   bool isLanguageVersionSupported(const LangOptions &LangOpts) const override;
 
 private:

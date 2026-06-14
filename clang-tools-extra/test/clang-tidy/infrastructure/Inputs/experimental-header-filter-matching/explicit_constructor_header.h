@@ -1,0 +1,1 @@
+class HeaderCtor { HeaderCtor(int); };

@@ -69,6 +69,12 @@ public:
     return true;
   }
 
+  /// Whether this check produces correct results when AST matching is scoped to
+  /// headers matching --header-filter.
+  ///
+  /// Checks that build cross-file state should override this to return false.
+  virtual bool isSafeForHeaderFilterScoping() const { return true; }
+
   /// Override this to register ``PPCallbacks`` in the preprocessor.
   ///
   /// This should be used for clang-tidy checks that analyze preprocessor-

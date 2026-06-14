@@ -39,6 +39,7 @@ class ForwardDeclarationNamespaceCheck : public ClangTidyCheck {
 public:
   ForwardDeclarationNamespaceCheck(StringRef Name, ClangTidyContext *Context)
       : ClangTidyCheck(Name, Context) {}
+  bool isSafeForHeaderFilterScoping() const override { return false; }
   void registerMatchers(ast_matchers::MatchFinder *Finder) override;
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
   void onEndOfTranslationUnit() override;
